@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,120 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calculator, TrendingUp, DollarSign } from "lucide-react";
 
-interface IndicatorData {
-  nome: string;
-  valor_anual: number;
-  ultima_atualizacao?: string;
-}
-
-interface IndicatorsResponse {
-  selic: IndicatorData;
-  cdi: IndicatorData;
-  poupanca: IndicatorData;
-  ipca: IndicatorData;
-}
-
-interface InvestmentSimulatorProps {
-  onSimulationUpdate?: (params: {
-    initialAmount: number;
-    monthlyAmount: number;
-    interestRate: number;
-    period: number;
-    investmentType: string;
-  }) => void;
-  loadedAnalysis?: {
-    initialAmount: number;
-    monthlyAmount: number;
-    period: number;
-    interestRate: number;
-    investmentType: string;
-  } | null;
-  onAnalysisLoaded?: () => void;
-}
-
-const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoaded }: InvestmentSimulatorProps) => {
+const InvestmentSimulator = () => {
   const [initialAmount, setInitialAmount] = useState<number>(1000);
   const [monthlyAmount, setMonthlyAmount] = useState<number>(100);
   const [interestRate, setInterestRate] = useState<number>(12);
   const [period, setPeriod] = useState<number>(12);
   const [investmentType, setInvestmentType] = useState<string>("cdi");
   const [results, setResults] = useState<any>(null);
-  const [indicators, setIndicators] = useState<IndicatorsResponse | null>(null);
-
-  useEffect(() => {
-    const fetchIndicators = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/indicators');
-        if (response.ok) {
-          const data = await response.json();
-          setIndicators(data);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar indicadores:', error);
-      }
-    };
-
-    fetchIndicators();
-  }, []);
 
   const investmentTypes = {
-    cdi: { 
-      name: "CDI 100%", 
-      rate: indicators?.cdi.valor_anual || 13.75, 
-      risk: "Baixo" 
-    },
-    tesouro: { 
-      name: "Tesouro Selic", 
-      rate: indicators?.selic.valor_anual || 12.8, 
-      risk: "Baixíssimo" 
-    },
-    lci: { 
-      name: "LCI/LCA (85% CDI)", 
-      rate: indicators?.cdi.valor_anual ? indicators.cdi.valor_anual * 0.85 : 11.5, 
-      risk: "Baixo" 
-    },
-    cdb: { 
-      name: "CDB (100% CDI)", 
-      rate: indicators?.cdi.valor_anual || 12.5, 
-      risk: "Baixo" 
-    },
-    poupanca: { 
-      name: "Poupança", 
-      rate: indicators?.poupanca.valor_anual || 8.33, 
-      risk: "Baixíssimo" 
-    }
+    cdi: { name: "CDI", rate: 13.75, risk: "Baixo" },
+    lci: { name: "LCI/LCA", rate: 11.5, risk: "Baixo" },
+    tesouro: { name: "Tesouro Direto", rate: 12.8, risk: "Baixo" },
+    acoes: { name: "Ações", rate: 15.2, risk: "Alto" },
+    fundos: { name: "Fundos", rate: 14.1, risk: "Médio" }
   };
 
-  // Atualiza a taxa de juros quando o tipo de investimento ou os indicadores mudarem
-  useEffect(() => {
-    const selectedType = investmentTypes[investmentType as keyof typeof investmentTypes];
-    if (selectedType) {
-      setInterestRate(selectedType.rate);
-    }
-  }, [investmentType, indicators]);
-
-  // Carrega análise do histórico quando fornecida
-  useEffect(() => {
-    if (loadedAnalysis) {
-      setInitialAmount(loadedAnalysis.initialAmount);
-      setMonthlyAmount(loadedAnalysis.monthlyAmount);
-      setPeriod(loadedAnalysis.period);
-      setInterestRate(loadedAnalysis.interestRate);
-      setInvestmentType(loadedAnalysis.investmentType);
-      
-      // Executa o cálculo automaticamente passando true para pular salvamento
-      setTimeout(() => {
-        calculateInvestment(true);
-      }, 100);
-      
-      // Notifica que a análise foi carregada
-      if (onAnalysisLoaded) {
-        onAnalysisLoaded();
-      }
-    }
-  }, [loadedAnalysis]);
-
-  const calculateInvestment = (skipSaveToHistory = false) => {
+  const calculateInvestment = () => {
     const monthlyRate = (interestRate / 100) / 12;
     const months = period;
     
@@ -142,45 +45,6 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
       returnPercentage,
       monthlyRate: interestRate / 12
     });
-
-    // Salvar no histórico apenas se não for um carregamento do histórico
-    if (!skipSaveToHistory) {
-      const now = new Date();
-      const analysis = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        date: now.toLocaleDateString('pt-BR'),
-        time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        investmentType,
-        initialAmount,
-        monthlyAmount,
-        period,
-        interestRate,
-        totalValue: totalFutureValue,
-        profit: totalReturn
-      };
-
-      // Recuperar histórico existente
-      const existingHistory = localStorage.getItem('analysisHistory');
-      const history = existingHistory ? JSON.parse(existingHistory) : [];
-      
-      // Adicionar nova análise no início e limitar a 50 itens
-      history.unshift(analysis);
-      const limitedHistory = history.slice(0, 50);
-      
-      // Salvar no localStorage
-      localStorage.setItem('analysisHistory', JSON.stringify(limitedHistory));
-    }
-
-    // Notifica o componente pai sobre a atualização
-    if (onSimulationUpdate) {
-      onSimulationUpdate({
-        initialAmount,
-        monthlyAmount,
-        interestRate,
-        period,
-        investmentType
-      });
-    }
   };
 
   const formatCurrency = (value: number) => {
@@ -192,18 +56,6 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
 
   return (
     <div className="space-y-6">
-      {loadedAnalysis && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <div className="bg-blue-500 rounded-full p-2">
-            <TrendingUp className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-blue-900">Análise carregada do histórico</p>
-            <p className="text-xs text-blue-700">Os valores foram preenchidos automaticamente</p>
-          </div>
-        </div>
-      )}
-      
       <Card className="financial-card w-full">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -276,7 +128,7 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
           </div>
 
           <Button 
-            onClick={() => calculateInvestment()}
+            onClick={calculateInvestment}
             className="w-full bg-financial-gradient hover:opacity-90 text-white"
           >
             <TrendingUp className="h-4 w-4 mr-2" />
