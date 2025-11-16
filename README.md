@@ -217,25 +217,3 @@ npm start            # Inicia servidor (http://localhost:5000)
 npm run dev          # Desenvolvimento com nodemon (se configurado)
 ```
 
-## 🤝 Contribuindo
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
-## 👨‍💻 Autor
-
-**Pedro Nogueira**
-- GitHub: [@pedrohenriferreira](https://github.com/pedrohenriferreira)
-
-## 🙏 Agradecimentos
-
-- [Banco Central do Brasil](https://www.bcb.gov.br/) - API pública de indicadores
-- [shadcn/ui](https://ui.shadcn.com/) - Sistema de componentes
-- [Recharts](https://recharts.org/) - Biblioteca de gráficos
