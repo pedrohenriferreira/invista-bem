@@ -39,13 +39,17 @@ const InvestmentComparison = ({
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
+        console.log('📊 [Comparison] Buscando indicadores...');
         const response = await fetch('http://localhost:5000/indicators');
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ [Comparison] Indicadores carregados');
           setIndicators(data);
+        } else {
+          console.warn('⚠️ [Comparison] Falha ao buscar indicadores, usando valores padrão');
         }
       } catch (error) {
-        console.error('Erro ao buscar indicadores:', error);
+        console.error('❌ [Comparison] Erro ao buscar indicadores:', error);
       }
     };
 

@@ -1,6 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { TrendingUp, BarChart3, History, Clock, TrendingDown, ArrowRight, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { TrendingUp, BarChart3, History, Clock, TrendingDown, ArrowRight, Trash2, LogIn, UserPlus, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +18,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Analysis {
   id: string;
@@ -37,22 +49,51 @@ const Header = ({ onLoadAnalysis }: HeaderProps) => {
   const [analysisHistory, setAnalysisHistory] = useState<Analysis[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Carregar histórico do localStorage
-    const saved = localStorage.getItem('analysisHistory');
-    if (saved) {
-      setAnalysisHistory(JSON.parse(saved));
+    // Carregar histórico do localStorage específico do usuário
+    if (user) {
+      try {
+        const saved = localStorage.getItem(`analysisHistory_${user.id}`);
+        if (saved) {
+          setAnalysisHistory(JSON.parse(saved));
+        } else {
+          setAnalysisHistory([]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar histórico:", error);
+        setAnalysisHistory([]);
+      }
+    } else {
+      setAnalysisHistory([]);
     }
-  }, []);
+  }, [user]);
 
   // Atualizar histórico quando o Sheet abrir
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
-      const saved = localStorage.getItem('analysisHistory');
-      if (saved) {
-        setAnalysisHistory(JSON.parse(saved));
+      if (!isAuthenticated) {
+        toast({
+          title: "Login necessário",
+          description: "Faça login para visualizar e salvar seu histórico de análises",
+          variant: "default",
+        });
+        return;
+      }
+      if (user) {
+        try {
+          const saved = localStorage.getItem(`analysisHistory_${user.id}`);
+          if (saved) {
+            setAnalysisHistory(JSON.parse(saved));
+          }
+        } catch (error) {
+          console.error("Erro ao carregar histórico:", error);
+          setAnalysisHistory([]);
+        }
       }
     }
   };
@@ -106,10 +147,25 @@ const Header = ({ onLoadAnalysis }: HeaderProps) => {
     }
   };
 
-  const handleClearHistory = () => {
-    localStorage.removeItem('analysisHistory');
-    setAnalysisHistory([]);
-    setShowClearDialog(false);
+  const clearHistory = () => {
+    if (user) {
+      try {
+        localStorage.removeItem(`analysisHistory_${user.id}`);
+        setAnalysisHistory([]);
+        setShowClearDialog(false);
+        toast({
+          title: "Histórico limpo",
+          description: "Todas as análises foram removidas",
+        });
+      } catch (error) {
+        console.error("Erro ao limpar histórico:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível limpar o histórico",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   return (
@@ -126,12 +182,12 @@ const Header = ({ onLoadAnalysis }: HeaderProps) => {
             </div>
           </div>
           
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-4">
             <Sheet open={isOpen} onOpenChange={handleOpenChange}>
               <SheetTrigger asChild>
                 <div className="flex items-center space-x-2 text-gray-700 hover:text-financial-blue transition-colors cursor-pointer">
                   <History className="h-4 w-4" />
-                  <span className="font-medium">Histórico de Análises</span>
+                  <span className="font-medium">Histórico</span>
                   {analysisHistory.length > 0 && (
                     <Badge variant="secondary" className="ml-1">
                       {analysisHistory.length}
@@ -227,6 +283,65 @@ const Header = ({ onLoadAnalysis }: HeaderProps) => {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
+
+            <div className="flex items-center space-x-3 border-l border-gray-300 pl-4">
+              {isAuthenticated && user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center space-x-3 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-financial-blue focus:ring-offset-2 rounded-full">
+                      <Avatar className="h-10 w-10 border-2 border-financial-blue">
+                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarFallback className="bg-financial-gradient text-white font-semibold">
+                          {user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-left hidden md:block">
+                        <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div>
+                        <p className="font-semibold">{user.name}</p>
+                        <p className="text-xs text-gray-500 font-normal">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        logout();
+                        navigate("/");
+                      }} 
+                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-700 hover:text-financial-blue hover:bg-blue-50"
+                    onClick={() => navigate("/login")}
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Entrar
+                  </Button>
+                  
+                  <Button 
+                    className="bg-financial-gradient hover:opacity-90 text-white"
+                    onClick={() => navigate("/cadastro")}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Cadastrar-se
+                  </Button>
+                </>
+              )}
+            </div>
           </nav>
         </div>
       </div>
@@ -242,7 +357,7 @@ const Header = ({ onLoadAnalysis }: HeaderProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleClearHistory}
+              onClick={clearHistory}
               className="bg-red-600 hover:bg-red-700"
             >
               Limpar tudo

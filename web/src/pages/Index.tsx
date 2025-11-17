@@ -20,6 +20,8 @@ interface Analysis {
 }
 
 const Index = () => {
+  console.log('🏠 Index page renderizada');
+  
   const [simulationParams, setSimulationParams] = useState({
     initialAmount: 1000,
     monthlyAmount: 100,

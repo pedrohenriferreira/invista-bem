@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Calculator, TrendingUp, DollarSign } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface IndicatorData {
   nome: string;
@@ -46,17 +47,22 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
   const [investmentType, setInvestmentType] = useState<string>("cdi");
   const [results, setResults] = useState<any>(null);
   const [indicators, setIndicators] = useState<IndicatorsResponse | null>(null);
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
+        console.log('📊 [Simulator] Buscando indicadores...');
         const response = await fetch('http://localhost:5000/indicators');
         if (response.ok) {
           const data = await response.json();
+          console.log('✅ [Simulator] Indicadores carregados');
           setIndicators(data);
+        } else {
+          console.warn('⚠️ [Simulator] Falha ao buscar indicadores, usando valores padrão');
         }
       } catch (error) {
-        console.error('Erro ao buscar indicadores:', error);
+        console.error('❌ [Simulator] Erro ao buscar indicadores:', error);
       }
     };
 
@@ -143,8 +149,8 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
       monthlyRate: interestRate / 12
     });
 
-    // Salvar no histórico apenas se não for um carregamento do histórico
-    if (!skipSaveToHistory) {
+    // Salvar no histórico apenas se não for um carregamento do histórico E se o usuário estiver logado
+    if (!skipSaveToHistory && isAuthenticated && user) {
       const now = new Date();
       const analysis = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -159,16 +165,16 @@ const InvestmentSimulator = ({ onSimulationUpdate, loadedAnalysis, onAnalysisLoa
         profit: totalReturn
       };
 
-      // Recuperar histórico existente
-      const existingHistory = localStorage.getItem('analysisHistory');
+      // Recuperar histórico existente do usuário específico
+      const existingHistory = localStorage.getItem(`analysisHistory_${user.id}`);
       const history = existingHistory ? JSON.parse(existingHistory) : [];
       
       // Adicionar nova análise no início e limitar a 50 itens
       history.unshift(analysis);
       const limitedHistory = history.slice(0, 50);
       
-      // Salvar no localStorage
-      localStorage.setItem('analysisHistory', JSON.stringify(limitedHistory));
+      // Salvar no localStorage com chave específica do usuário
+      localStorage.setItem(`analysisHistory_${user.id}`, JSON.stringify(limitedHistory));
     }
 
     // Notifica o componente pai sobre a atualização

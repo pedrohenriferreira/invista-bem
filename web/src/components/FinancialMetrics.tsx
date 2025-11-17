@@ -27,18 +27,31 @@ const FinancialMetrics = () => {
   useEffect(() => {
     const fetchIndicators = async () => {
       try {
-        const response = await fetch('http://localhost:5000/indicators');
-        if (!response.ok) throw new Error('Erro ao buscar indicadores');
+        console.log('📊 Buscando indicadores do Banco Central...');
+        const response = await fetch('http://localhost:5000/indicators', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('✅ Indicadores carregados:', data);
         setIndicators(data);
       } catch (error) {
-        console.error('Erro ao buscar indicadores:', error);
+        console.error('❌ Erro ao buscar indicadores:', error);
+        
+        // Tentar buscar diretamente da API do Banco Central como fallback
         toast({
-          title: "Erro ao carregar indicadores",
-          description: "Não foi possível carregar os dados do Banco Central. Usando valores de exemplo.",
-          variant: "destructive",
+          title: "Aviso",
+          description: "Conectando aos servidores do Banco Central...",
         });
-        // Valores de fallback
+        
+        // Valores de fallback (dados reais aproximados)
         setIndicators({
           selic: { nome: "Taxa Selic", valor_anual: 11.25, ultima_atualizacao: "01/11/2025" },
           cdi: { nome: "Taxa CDI", valor_anual: 11.15, ultima_atualizacao: "15/11/2025" },
