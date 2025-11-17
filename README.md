@@ -17,6 +17,14 @@ O **Invista Bem** é uma aplicação web completa para simulação de investimen
 
 ## 🎯 Funcionalidades Principais
 
+### 🔐 Sistema de Autenticação
+- **Cadastro de usuários** com validação de dados
+- **Login seguro** com JWT (JSON Web Token)
+- **Senha criptografada** com bcrypt
+- **Sessão persistente** com token no localStorage
+- **Avatar personalizado** com iniciais do nome
+- **Histórico individual** por usuário autenticado
+
 ### 📊 Indicadores do Mercado
 - **Taxa Selic** - Meta anual do Banco Central
 - **CDI** - Taxa diária anualizada (252 dias úteis)
@@ -34,13 +42,15 @@ O **Invista Bem** é uma aplicação web completa para simulação de investimen
 - **Comparação entre investimentos**: todos os produtos lado a lado
 - **Métricas detalhadas**: valores formatados em BRL com percentuais
 
-### 🗂️ Histórico de Análises
-- **Salvamento automático** no localStorage (máximo 50 análises)
+### 🗂️ Histórico de Análises (Autenticado)
+- **Salvamento automático** apenas para usuários logados
+- **Histórico individual** por usuário (localStorage com chave `analysisHistory_${userId}`)
 - **Visualização organizada** com data, hora e badges coloridos
 - **Click-to-load**: clique em uma análise para recarregar os dados
 - **Scroll automático** para os resultados ao carregar
 - **Prevenção de duplicatas**: não salva ao carregar do histórico
-- **Botão de limpar** com confirmação para remover todo histórico
+- **Botão de limpar** com confirmação para remover histórico do usuário
+- **Toast informativo**: avisa quando não autenticado que é necessário login
 
 ## 📁 Estrutura do Projeto
 
@@ -130,6 +140,8 @@ npm run dev
 | Express | 4.x | Framework web |
 | Axios | 1.x | Cliente HTTP |
 | CORS | 2.x | Middleware CORS |
+| bcryptjs | 2.x | Criptografia de senhas |
+| jsonwebtoken | 9.x | Autenticação JWT |
 
 ## 📡 Integração com Banco Central
 
@@ -174,6 +186,8 @@ Onde:
 
 ### LocalStorage Schema
 
+**Chave de armazenamento:** `analysisHistory_${userId}` (específico por usuário)
+
 ```typescript
 interface Analysis {
   id: string;                    // timestamp + random
@@ -186,6 +200,85 @@ interface Analysis {
   interestRate: number;          // % a.a.
   totalValue: number;            // R$ (valor final)
   profit: number;                // R$ (lucro)
+}
+
+// Máximo: 50 análises por usuário
+// Ordenação: Mais recente primeiro
+```
+
+**Token de Autenticação:** `token` (JWT no localStorage)  
+**Dados do Usuário:** `investaBem_user` (objeto JSON com id, name, email)
+
+## 🔐 API de Autenticação
+
+### Endpoints
+
+#### POST `/auth/register`
+Cadastrar novo usuário
+
+**Request Body:**
+```json
+{
+  "name": "João Silva",
+  "email": "joao@example.com",
+  "phone": "(11) 98765-4321",
+  "password": "senha123"
+}
+```
+
+**Response (201):**
+```json
+{
+  "user": {
+    "id": "user_id_123",
+    "name": "João Silva",
+    "email": "joao@example.com",
+    "phone": "(11) 98765-4321",
+    "createdAt": "2025-11-16T12:00:00Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### POST `/auth/login`
+Fazer login
+
+**Request Body:**
+```json
+{
+  "email": "joao@example.com",
+  "password": "senha123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "user": {
+    "id": "user_id_123",
+    "name": "João Silva",
+    "email": "joao@example.com"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+#### GET `/auth/me`
+Verificar token (rota protegida)
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200):**
+```json
+{
+  "user": {
+    "id": "user_id_123",
+    "name": "João Silva",
+    "email": "joao@example.com"
+  }
 }
 ```
 
